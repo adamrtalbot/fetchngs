@@ -59,6 +59,8 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_fetc
 //
 workflow {
 
+    // Fake Change
+
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
