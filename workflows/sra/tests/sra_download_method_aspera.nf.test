@@ -3,18 +3,16 @@ nextflow_workflow {
     name "Test workflow: sra/main.nf"
     script "../main.nf"
     workflow "SRA"
+    tag "SRA_DOWNLOAD_METHOD_ASPERA"
 
-    // Subworkflows
-    tag "SRA"
-
-    // Modules
-    tag "MULTIQC_MAPPINGS_CONFIG"
-    tag "SRA_FASTQ_FTP"
+    // Dependencies
     tag "SRA_IDS_TO_RUNINFO"
     tag "SRA_RUNINFO_TO_FTP"
+    tag "ASPERA_CLI"
     tag "SRA_TO_SAMPLESHEET"
+    tag "MULTIQC_MAPPINGS_CONFIG"
 
-    test("Parameters: --force_sratools_download") {
+    test("Parameters: --download_method aspera") {
 
         when {
             workflow {
@@ -23,8 +21,7 @@ nextflow_workflow {
                 """
             }
             params {
-                outdir = "$outputDir"
-                force_sratools_download = true
+                download_method = 'aspera'
             }
         }
 
