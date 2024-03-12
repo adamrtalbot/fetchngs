@@ -13,7 +13,7 @@ on:
 
 env:
   NXF_ANSI_LOG: false
-  NFT_VER: "0.8.3"
+  NFT_VER: "0.8.4"
   NFT_WORKDIR: "~"
   NFT_DIFF: "pdiff"
   NFT_DIFF_ARGS: "--line-numbers --expand-tabs=2"
@@ -27,94 +27,40 @@ jobs:
     name: Check for changes
     runs-on: ubuntu-latest
     outputs:
-      changes: ${{ steps.changed_files.outputs.any_modified }}
-      tags: ${{ steps.list.outputs.tags }}
+      nf_test_files: ${{ steps.list.outputs.nf_test_files }}
     steps:
-      - name: Install Nextflow
-        uses: nf-core/setup-nextflow@v1
-
-      - name: Cache nf-test installation
-        id: cache-software
-        uses: actions/cache@v3
+      - uses: actions/setup-python@v4
         with:
-          path: |
-            /usr/local/bin/nf-test
-            /home/runner/.nf-test/nf-test.jar
-          key: ${{ runner.os }}-${{ env.NFT_VER }}-nftest
-
-      - name: Install nf-test
-        if: steps.cache-software.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- https://code.askimed.com/install/nf-test | bash
-          sudo mv nf-test /usr/local/bin/
+          python-version: "3.11"
+          architecture: "x64"
 
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - uses: tj-actions/changed-files@v42
-        id: changed_files
-        with:
-          dir_names: "true"
-          output_renamed_files_as_deleted_and_added: "true"
-          # Define list of additional rules for testing paths
-          # Mostly, we define additional 'pipeline' or 'all' tests here
-          files_yaml: |
-            ".":
-              - .github/workflows/**
-              - nf-test.config
-              - nextflow.config
-            tests:
-              - assets/*
-              - bin/*
-              - conf/*
-              - main.nf
-              - nextflow_schema.json
+      - name: Install gitpython find changed files
+        run: |
+          python -m pip install --upgrade pip
+          pip install gitpython pyyaml
 
-          files_ignore: |
-            .git*
-            .gitpod.yml
-            .prettierignore
-            .prettierrc.yml
-            **.md
-            **.png
-            modules.json
-            pyproject.toml
-            tower.yml
+      - name: nf-test list nf_test_files
+        id: list
+        run: |
+          echo nf_test_files=$(python \
+            .github/python/find_changed_files.py \
+            -t pipeline workflow process \
+            --head_ref ${{ github.sha }} \
+            --base_ref origin/${{ github.base_ref }} \
+          ) >> $GITHUB_OUTPUT
 
       - name: debug
         run: |
-          echo ${{ steps.changed_files.outputs.any_modified }}
-          echo ${{ steps.changed_files.outputs.all_changed_files }}
-          echo ${{ steps.changed_files.outputs.changed_keys }}
-
-      - name: nf-test list tags
-        id: list
-        if: ${{ steps.changed_files.outputs.any_modified }}
-        run: echo tags=$(nf-test list --silent --tags --format json ${{ steps.changed_files.outputs.all_changed_files }} ${{ steps.changed_files.outputs.changed_keys }}) >> $GITHUB_OUTPUT
-
-      - name: debug2
-        run: |
-          echo ${{ steps.list.outputs.tags }}
-
-  # define_nxf_versions:
-  #   name: Choose nextflow versions to test against depending on target branch
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     matrix: ${{ steps.nxf_versions.outputs.matrix }}
-  #   steps:
-  #     - id: nxf_versions
-  #       run: |
-  #         if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "dev" && "${{ matrix.NXF_VER }}" != "latest-everything" ]]; then
-  #           echo matrix='["latest-everything"]' | tee -a $GITHUB_OUTPUT
-  #         else
-  #           echo matrix='["latest-everything", "23.04.0"]' | tee -a $GITHUB_OUTPUT
-  #         fi
+          echo ${{ steps.list.outputs.nf_test_files }}
 
   test:
-    name: ${{ matrix.tags }} ${{ matrix.profile }} NF-${{ matrix.NXF_VER }}
+    name: ${{ matrix.nf_test_files }} ${{ matrix.profile }} NF-${{ matrix.NXF_VER }}
     needs: [changes]
-    if: needs.changes.outputs.changes
+    if: needs.changes.outputs.nf_test_files != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -122,7 +68,7 @@ jobs:
         NXF_VER:
           - "latest-everything"
           - "23.04"
-        tags: ["${{ fromJson(needs.changes.outputs.tags) }}"]
+        nf_test_files: ["${{ fromJson(needs.changes.outputs.nf_test_files) }}"]
         profile:
           - "docker"
 
@@ -131,7 +77,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nextflow
-        uses: nf-core/setup-nextflow@v1
+        uses: nf-core/setup-nextflow@v2
         with:
           version: "${{ matrix.NXF_VER }}"
 
@@ -162,7 +108,7 @@ jobs:
 
       - name: Run nf-test
         run: |
-          nf-test test --verbose --tag ${{ matrix.tags }} --profile "${{ matrix.profile }}" --junitxml=test.xml --tap=test.tap
+          nf-test test --verbose ${{ matrix.nf_test_files }} --profile "+${{ matrix.profile }}" --junitxml=test.xml --tap=test.tap
 
       - uses: pcolby/tap-summary@v1
         with:
@@ -183,11 +129,13 @@ jobs:
 
   confirm-pass:
     runs-on: ubuntu-latest
-    needs: [test]
+    needs:
+      - changes
+      - test
     if: always()
     steps:
       - name: All tests ok
-        if: ${{ success() || !contains(needs.*.result, 'failure') }}
+        if: ${{ !contains(needs.*.result, 'failure') }}
         run: exit 0
       - name: One or more tests failed
         if: ${{ contains(needs.*.result, 'failure') }}
