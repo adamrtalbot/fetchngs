@@ -13,12 +13,19 @@ nextflow.enable.dsl = 2
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    NAMED WORKFLOWS FOR PIPELINE
+    IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-if (params.input_type == 'sra')     include { SRA     } from './workflows/sra'
-if (params.input_type == 'synapse') include { SYNAPSE } from './workflows/synapse'
+include { SRA                     } from './workflows/sra'
+include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_fetchngs_pipeline'
+include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_fetchngs_pipeline'
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    NAMED WORKFLOWS FOR PIPELINE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
 
 //
 // WORKFLOW: Run main nf-core/fetchngs analysis pipeline depending on type of identifier provided
@@ -33,30 +40,16 @@ workflow NFCORE_FETCHNGS {
     //
     // WORKFLOW: Download FastQ files for SRA / ENA / GEO / DDBJ ids
     //
-    if (params.input_type == 'sra') {
-        SRA ( ids )
-
-    //
-    // WORKFLOW: Download FastQ files for Synapse ids
-    //
-    } else if (params.input_type == 'synapse') {
-        SYNAPSE ( ids )
-    }
+    SRA ( ids )
 
 }
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN ALL WORKFLOWS
+    RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_fetchngs_pipeline'
-include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_fetchngs_pipeline'
-
-//
-// WORKFLOW: Execute a single named workflow for the pipeline
-//
 workflow {
 
     //
@@ -67,9 +60,9 @@ workflow {
         params.help,
         params.validate_params,
         params.monochrome_logs,
+        args,
         params.outdir,
         params.input,
-        params.input_type,
         params.ena_metadata_fields
     )
 
@@ -84,7 +77,6 @@ workflow {
     // SUBWORKFLOW: Run completion tasks
     //
     PIPELINE_COMPLETION (
-        params.input_type,
         params.email,
         params.email_on_fail,
         params.plaintext_email,
