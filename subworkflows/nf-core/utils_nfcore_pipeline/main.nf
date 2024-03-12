@@ -13,8 +13,15 @@ import nextflow.extension.FilesEx
 
 workflow UTILS_NFCORE_PIPELINE {
 
+    take:
+    nextflow_cli_args
+
     main:
-    checkConfigProvided()
+    valid_config = checkConfigProvided()
+    checkProfileProvided(nextflow_cli_args)
+
+    emit:
+    valid_config
 }
 
 /*
@@ -27,6 +34,7 @@ workflow UTILS_NFCORE_PIPELINE {
 //  Warn if a -profile or Nextflow config has not been provided to run the pipeline
 //
 def checkConfigProvided() {
+    valid_config = true
     if (workflow.profile == 'standard' && workflow.configFiles.size() <= 1) {
         log.warn "[$workflow.manifest.name] You are attempting to run the pipeline without any custom configuration!\n\n" +
             "This will be dependent on your local compute environment but can be achieved via one or more of the following:\n" +
@@ -34,6 +42,22 @@ def checkConfigProvided() {
             "   (2) Using an existing nf-core/configs for your Institution e.g. `-profile crick` or `-profile uppmax`\n" +
             "   (3) Using your own local custom config e.g. `-c /path/to/your/custom.config`\n\n" +
             "Please refer to the quick start section and usage docs for the pipeline.\n "
+        valid_config = false
+    }
+    return valid_config
+}
+
+//
+// Exit pipeline if --profile contains spaces
+//
+def checkProfileProvided(nextflow_cli_args) {
+    if (workflow.profile.endsWith(',')) {
+        error "The `-profile` option cannot end with a trailing comma, please remove it and re-run the pipeline!\n" +
+            "HINT: A common mistake is to provide multiple values separated by spaces e.g. `-profile test, docker`.\n"
+    }
+    if (nextflow_cli_args[0]) {
+        log.warn "nf-core pipelines do not accept positional arguments. The positional argument `${nextflow_cli_args[0]}` has been detected.\n" +
+            "HINT: A common mistake is to provide multiple values separated by spaces e.g. `-profile test, docker`.\n"
     }
 }
 
@@ -73,7 +97,7 @@ def getWorkflowVersion() {
 //
 def processVersionsFromYAML(yaml_file) {
     Yaml yaml = new Yaml()
-    versions = yaml.load(yaml_file).collectEntries { k,v -> [ k.tokenize(':')[-1], v ] }
+    versions = yaml.load(yaml_file).collectEntries { k, v -> [ k.tokenize(':')[-1], v ] }
     return yaml.dumpAsMap(versions).trim()
 }
 
@@ -83,8 +107,8 @@ def processVersionsFromYAML(yaml_file) {
 def workflowVersionToYAML() {
     return """
     Workflow:
-      $workflow.manifest.name: ${getWorkflowVersion()}
-      Nextflow: $workflow.nextflow.version
+        $workflow.manifest.name: ${getWorkflowVersion()}
+        Nextflow: $workflow.nextflow.version
     """.stripIndent().trim()
 }
 
@@ -95,6 +119,7 @@ def softwareVersionsToYAML(ch_versions) {
     return ch_versions
                 .unique()
                 .map { processVersionsFromYAML(it) }
+                .unique()
                 .mix(Channel.of(workflowVersionToYAML()))
 }
 
@@ -222,9 +247,32 @@ def logColours(monochrome_logs=true) {
 }
 
 //
+// Attach the multiqc report to email
+//
+def attachMultiqcReport(multiqc_report) {
+    def mqc_report = null
+    try {
+        if (workflow.success) {
+            mqc_report = multiqc_report.getVal()
+            if (mqc_report.getClass() == ArrayList && mqc_report.size() >= 1) {
+                if (mqc_report.size() > 1) {
+                    log.warn "[$workflow.manifest.name] Found multiple reports from process 'MULTIQC', will use only one"
+                }
+                mqc_report = mqc_report[0]
+            }
+        }
+    } catch (all) {
+        if (multiqc_report) {
+            log.warn "[$workflow.manifest.name] Could not attach MultiQC report to summary email"
+        }
+    }
+    return mqc_report
+}
+
+//
 // Construct and send completion email
 //
-def completionEmail(summary_params, email, email_on_fail, plaintext_email, outdir, monochrome_logs=true) {
+def completionEmail(summary_params, email, email_on_fail, plaintext_email, outdir, monochrome_logs=true, multiqc_report=null) {
 
     // Set up the e-mail variables
     def subject = "[$workflow.manifest.name] Successful: $workflow.runName"
@@ -262,6 +310,9 @@ def completionEmail(summary_params, email, email_on_fail, plaintext_email, outdi
     email_fields['projectDir']   = workflow.projectDir
     email_fields['summary']      = summary << misc_fields
 
+    // On success try attach the multiqc report
+    def mqc_report = attachMultiqcReport(multiqc_report)
+
     // Check if we are only sending emails on failure
     def email_address = email
     if (!email && email_on_fail && !workflow.success) {
@@ -280,7 +331,8 @@ def completionEmail(summary_params, email, email_on_fail, plaintext_email, outdi
     def email_html    = html_template.toString()
 
     // Render the sendmail template
-    def smail_fields           = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, projectDir: "${workflow.projectDir}" ]
+    def max_multiqc_email_size = (params.containsKey('max_multiqc_email_size') ? params.max_multiqc_email_size : 0) as nextflow.util.MemoryUnit
+    def smail_fields           = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, projectDir: "${workflow.projectDir}", mqcFile: mqc_report, mqcMaxSize: max_multiqc_email_size.toBytes() ]
     def sf                     = new File("${workflow.projectDir}/assets/sendmail_template.txt")
     def sendmail_template      = engine.createTemplate(sf).make(smail_fields)
     def sendmail_html          = sendmail_template.toString()
