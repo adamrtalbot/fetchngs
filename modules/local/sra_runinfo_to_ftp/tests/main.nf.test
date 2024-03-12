@@ -4,15 +4,9 @@ nextflow_process {
     script "../main.nf"
     process "SRA_RUNINFO_TO_FTP"
 
-    tag "SRA_RUNINFO_TO_FTP"
-
     test("Should run without failures") {
 
         when {
-            params {
-                outdir = "$outputDir"
-            }
-
             process {
                 """
                 input[0] = file(params.pipelines_testdata_base_path + 'tsv/SRR13191702.runinfo.tsv', checkIfExists: true)
