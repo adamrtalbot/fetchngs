@@ -3,15 +3,14 @@ nextflow_workflow {
     name "Test workflow: sra/main.nf"
     script "../main.nf"
     workflow "SRA"
-    tag "SRA"
+    tag "SRA_DEFAULT"
 
     // Dependencies
-    tag "MULTIQC_MAPPINGS_CONFIG"
-    tag "SRA_FASTQ_FTP"
     tag "SRA_IDS_TO_RUNINFO"
     tag "SRA_RUNINFO_TO_FTP"
+    tag "SRA_FASTQ_FTP"
     tag "SRA_TO_SAMPLESHEET"
-
+    tag "MULTIQC_MAPPINGS_CONFIG"
 
     test("Parameters: default") {
 
@@ -20,9 +19,6 @@ nextflow_workflow {
                 """
                 input[0] = Channel.from("DRX026011", "ERX1234253", "SRX6725035")
                 """
-            }
-            params {
-                outdir = "$outputDir"
             }
         }
 

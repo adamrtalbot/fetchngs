@@ -5,6 +5,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished Version / DEV]
 
+### Enhancements & fixes
+
+- [PR #299](https://github.com/nf-core/fetchngs/pull/299) - Template update for nf-core/tools v2.13.1
+
+## [[1.12.0](https://github.com/nf-core/fetchngs/releases/tag/1.12.0)] - 2024-02-29
+
+### :warning: Major enhancements
+
+- The Aspera CLI was recently added to [Bioconda](https://anaconda.org/bioconda/aspera-cli) and we have added it as another way of downloading FastQ files in addition to the existing FTP and sra-tools support. In our limited benchmarks on all public Clouds we found ~50% speed-up in download times compared to FTP! FTP downloads will still be the default download method (i.e. `--download_method ftp`) but you can choose to use sra-tools or Aspera using `--download_method sratools` or `--download_method aspera`, respectively. We would love to have your feedback!
+- The `--force_sratools_download` parameter has been deprecated in favour of using `--download_method <method>` to explicitly specify the download method; available options are `ftp`, `sratools` or `aspera`.
+- Support for Synapse ids has been dropped in this release. We haven't had any feedback from users whether it is being used or not. Users can run earlier versions of the pipeline if required.
+- We have significantly refactored and standardised the way we are using nf-test within this pipeline. This pipeline is now the current, best-practice implementation for nf-test usage on nf-core. We required a number of features to be added to nf-test and a huge shoutout to [Lukas Forer](https://github.com/lukfor) for entertaining our requests and implementing them within upstream :heart:!
+
 ### Credits
 
 Special thanks to the following for their contributions to the release:
@@ -12,7 +25,10 @@ Special thanks to the following for their contributions to the release:
 - [Adam Talbot](https://github.com/adamrtalbot)
 - [Alexandru Mizeranschi](https://github.com/nicolae06)
 - [Alexander Blaessle](https://github.com/alexblaessle)
+- [Lukas Forer](https://github.com/lukfor)
+- [Matt Niederhuber](https://github.com/mniederhuber)
 - [Maxime Garcia](https://github.com/maxulysse)
+- [Sateesh Peri](https://github.com/sateeshperi)
 - [Sebastian Uhrig](https://github.com/suhrig)
 
 Thank you to everyone else that has contributed by reporting bugs, enhancements or in any other way, shape or form.
@@ -27,6 +43,25 @@ Thank you to everyone else that has contributed by reporting bugs, enhancements 
 - [PR #246](https://github.com/nf-core/fetchngs/pull/246) - Handle dark/light mode for logo in GitHub README properly
 - [PR #248](https://github.com/nf-core/fetchngs/pull/248) - Update pipeline level test data path to use mirror on s3
 - [PR #249](https://github.com/nf-core/fetchngs/pull/249) - Update modules which includes absolute paths for test data, making module level test compatible within the pipeline.
+- [PR #253](https://github.com/nf-core/fetchngs/pull/253) - Add implicit tags in nf-test files for simpler testing strategy
+- [PR #257](https://github.com/nf-core/fetchngs/pull/257) - Template update for nf-core/tools v2.12
+- [PR #258](https://github.com/nf-core/fetchngs/pull/258) - Fixes for [PR #253](https://github.com/nf-core/fetchngs/pull/253)
+- [PR #259](https://github.com/nf-core/fetchngs/pull/259) - Add Aspera CLI download support to pipeline ([#68](https://github.com/nf-core/fetchngs/issues/68))
+- [PR #261](https://github.com/nf-core/fetchngs/pull/261) - Revert sratools fasterqdump version ([#221](https://github.com/nf-core/fetchngs/issues/221))
+- [PR #262](https://github.com/nf-core/fetchngs/pull/262) - Use nf-test version v0.8.4 and remove implicit tags
+- [PR #263](https://github.com/nf-core/fetchngs/pull/263) - Refine tags used for workflows
+- [PR #264](https://github.com/nf-core/fetchngs/pull/264) - Remove synapse workflow from pipeline
+- [PR #265](https://github.com/nf-core/fetchngs/pull/265) - Use "+" syntax for profiles to accumulate profiles in nf-test
+- [PR #266](https://github.com/nf-core/fetchngs/pull/266) - Make .gitignore match template
+- [PR #268](https://github.com/nf-core/fetchngs/pull/268) - Add mermaid diagram
+- [PR #273](https://github.com/nf-core/fetchngs/pull/273) - Update utility subworkflows
+- [PR #283](https://github.com/nf-core/fetchngs/pull/283) - Template update for nf-core/tools v2.13
+- [PR #288](https://github.com/nf-core/fetchngs/pull/288) - Update Github Action to run full-sized test for all 3 download methods
+- [PR #290](https://github.com/nf-core/fetchngs/pull/290) - Remove mentions of deprecated Synapse functionality in pipeline
+- [PR #294](https://github.com/nf-core/fetchngs/pull/294) - Replace mermaid diagram with subway map
+- [PR #295](https://github.com/nf-core/fetchngs/pull/295) - Be less stringent with test expectations for CI
+- [PR #296](https://github.com/nf-core/fetchngs/pull/296) - Remove params.outdir from tests where required and update snapshots
+- [PR #298](https://github.com/nf-core/fetchngs/pull/298) - `export CONDA_PREFIX` into container when using Singularity and Apptainer
 
 ### Software dependencies
 
@@ -40,6 +75,19 @@ Thank you to everyone else that has contributed by reporting bugs, enhancements 
 >
 > **NB:** Dependency has been **removed** if new version information isn't present.
 
+### Parameters
+
+| Old parameter               | New parameter       |
+| --------------------------- | ------------------- |
+|                             | `--download_method` |
+| `--input_type`              |                     |
+| `--force_sratools_download` |                     |
+| `--synapse_config`          |                     |
+
+> **NB:** Parameter has been **updated** if both old and new parameter information is present.
+> **NB:** Parameter has been **added** if just the new parameter information is present.
+> **NB:** Parameter has been **removed** if new parameter information isn't present.
+
 ## [[1.11.0](https://github.com/nf-core/fetchngs/releases/tag/1.11.0)] - 2023-10-18
 
 ### Credits
@@ -47,7 +95,7 @@ Thank you to everyone else that has contributed by reporting bugs, enhancements 
 Special thanks to the following for their contributions to the release:
 
 - [Adam Talbot](https://github.com/adamrtalbot)
-- [Edmund Miller](https://github.com/Emiller88)
+- [Edmund Miller](https://github.com/edmundmiller)
 - [Esha Joshi](https://github.com/ejseqera)
 - [Harshil Patel](https://github.com/drpatelh)
 - [Lukas Forer](https://github.com/lukfor)

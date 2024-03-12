@@ -3,8 +3,7 @@ nextflow_workflow {
     name "Test workflow: fastq_download_prefetch_fasterqdump_sratools/main.nf"
     script "../main.nf"
     workflow "FASTQ_DOWNLOAD_PREFETCH_FASTERQDUMP_SRATOOLS"
-    tag "FASTQ_DOWNLOAD_PREFETCH_FASTERQDUMP_SRATOOLS"
-    
+
     tag "CUSTOM_SRATOOLSNCBISETTINGS"
     tag "SRATOOLS_PREFETCH"
     tag "SRATOOLS_FASTERQDUMP"
@@ -20,9 +19,6 @@ nextflow_workflow {
                 )
                 input[1] = []
                 """
-            }
-            params {
-                outdir = "output"
             }
         }
 
